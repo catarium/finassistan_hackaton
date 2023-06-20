@@ -4,6 +4,6 @@ from aiogram.types import Message
 from bot.misc import dp, bot
 
 
-@dp.message_handler(text=['/start'])
+@dp.message_handler(text=['/start'], state='*')
 async def start(message: Message):
     await message.answer('hello')
