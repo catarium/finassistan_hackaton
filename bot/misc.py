@@ -6,7 +6,6 @@ from bot.core.config import config
 storage = RedisStorage2(
     host=config.REDIS_HOST,
     port=config.REDIS_PORT,
-    # db=config.REDIS_DB
 )
 bot = Bot(token=config.TELEGRAM_TOKEN)
 dp = Dispatcher(bot, storage=storage)
