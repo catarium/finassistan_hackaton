@@ -25,3 +25,5 @@ async def database_init():
 
 def setup():
     import bot.handlers.home
+    import bot.handlers.finances
+    import bot.handlers.calculator
