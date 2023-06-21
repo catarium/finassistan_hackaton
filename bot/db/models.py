@@ -44,3 +44,14 @@ class Expense(models.Model):
 
     class Meta:
         table = 'expenses'
+
+
+class Operation(models.Model):
+    id = fields.BigIntField(pk=True, null=False, unique=True, index=True)
+    operation_type = fields.TextField(null=False)
+    operation_id = fields.BigIntField(null=False)
+    date = fields.DateField(null=False)
+    user = fields.ForeignKeyField('models.User', related_name='operations')
+
+    class Meta:
+        table = 'operations'

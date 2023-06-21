@@ -2,12 +2,14 @@ import datetime
 
 from aiogram.dispatcher import FSMContext
 from aiogram.types import CallbackQuery, Message
+from tortoise.expressions import Q
 
 from bot.core.constants import is_num_regex
-from bot.db.models import Expense, User, Income, Category
+from bot.db.models import Expense, User, Income, Category, Operation
 from bot.handlers.keyboards.finances_menu_keyboard import \
     finances_menu_keyboard, f_cb
 from bot.handlers.keyboards.categories_keyboard import categories_keyboard, cb
+from bot.handlers.states.add_expense import AddExpenseState
 from bot.handlers.states.add_income import AddIncomeState
 from bot.misc import dp
 
@@ -16,13 +18,18 @@ from bot.misc import dp
 async def finances_menu(call: CallbackQuery):
     await call.message.delete()
     user = await User.filter(telegram_id=int(call.message.chat.id)).first()
-    expenses = await user.expenses.all()
-    incomes = await user.incomes.limit(5).all()
-    operations = list(sorted(expenses + incomes, key=lambda x: x.date))
-    operations = '\n'.join([f'{op.id} {op.sum} {op.date}'
-                  if isinstance(op, Income) else
-                  f'{op.id} {op.sum} {(await op.category).name} {op.date}'
-                  for op in operations])
+    operations = await Operation.filter(Q(operation_id__in=[el[0] for el in (await user.expenses.all().values_list('id'))]) |
+                                        Q(operation_id__in=[el[0] for el in (await user.incomes.all().values_list('id'))])).limit(5).all()
+    operations = [await Expense.filter(id=operation.operation_id).first() if operation.operation_type == 'expense'
+                  else await Income.filter(id=operation.operation_id).first()
+                  for operation in operations]
+    # expenses = await user.expenses.limit(10).all()
+    # incomes = await user.incomes.limit(10).all()
+    # operations = list(sorted(expenses + incomes, key=lambda x: x.date))
+    operations = '\n'.join([f'{i + 1} +{operations[i].sum} {operations[i].date}'
+                  if isinstance(operations[i], Income) else
+                  f'{i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date}'
+                  for i in range(len(operations))])
     msg = f'''
 Ваши операции:
 {operations}
@@ -39,47 +46,90 @@ async def change_page(call: CallbackQuery, callback_data: dict):
     if callback_data['page'] < 1:
         return
     user = await User.filter(telegram_id=int(call.message.chat.id)).first()
-    expenses = await user.expenses.offset(5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
-    incomes = await user.incomes.offset(5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
-    operations = list(sorted(expenses + incomes, key=lambda x: x.date))
+    operations = await Operation.filter(Q(operation_id__in=[el[0] for el in (await user.expenses.all().values_list('id'))]) |
+                                        Q(operation_id__in=[el[0] for el in (await user.incomes.all().values_list('id'))])).offset(
+        5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
+    operations = [await Expense.filter(id=operation.operation_id).first() if operation.operation_type == 'expense'
+                  else await Income.filter(id=operation.operation_id).first()
+                  for operation in operations]
+    if not operations:
+        return
+    # expenses = await user.expenses.offset(5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
+    # incomes = await user.incomes.offset(5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
+    # if not expenses and not incomes:
+    #     return
+    # operations = list(sorted(expenses + incomes, key=lambda x: x.date))
     print(operations)
-    operations = '\n'.join([f'{op.id} {op.sum} {op.date}'
-                            if isinstance(op, Income) else
-                            f'{op.id} {op.sum} {(await op.category).name} {op.date}'
-                            for op in operations])
+    operations = '\n'.join([f'{5 * (callback_data["page"] - 1) + i + 1} +{operations[i].sum} {operations[i].date}'
+                            if isinstance(operations[i], Income) else
+                            f'{5 * (callback_data["page"] - 1) + i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date}'
+                            for i in range(len(operations))])
     msg = f'''
 Ваши операции:
 {operations}
 '''
     await call.message.edit_text(msg)
-    keyboard = await finances_menu_keyboard(callback_data['page'] + 1)
+    keyboard = await finances_menu_keyboard(callback_data['page'])
+
+    await call.message.edit_reply_markup(reply_markup=keyboard)
 
 
 @dp.callback_query_handler(text='add_expense')
-async def add_income(call: CallbackQuery):
+async def add_expense(call: CallbackQuery):
+    await call.answer()
     keyboard = await categories_keyboard([(category.id, category.name) for category in (await Category.all())])
-    await AddIncomeState.category.set()
+    await AddExpenseState.category.set()
     await call.message.answer('Выберите категорию', reply_markup=keyboard)
 
 
-@dp.callback_query_handler(cb.filter(), state=AddIncomeState.category)
+@dp.callback_query_handler(cb.filter(), state=AddExpenseState.category)
 async def category_chosen(call: CallbackQuery, callback_data: dict, state: FSMContext):
     await state.update_data(category=callback_data['el_id'])
-    await AddIncomeState.next()
+    await AddExpenseState.next()
     await call.message.answer('Введите сумму')
 
 
-@dp.message_handler(state=AddIncomeState.sum, regexp=is_num_regex)
-async def sum_entered(message: Message, state: FSMContext):
+@dp.message_handler(state=AddExpenseState.sum, regexp=is_num_regex)
+async def expense_sum_entered(message: Message, state: FSMContext):
+    await state.update_data(sum=float(message.text) * 100)
+    data = await state.get_data()
+    await save_expense(data, message, state)
+
+
+async def save_expense(data, message, state):
+    data['category'] = await Category.filter(id=int(data['category'])).first()
+    data['date'] = datetime.datetime.today()
+    data['user'] = await User.filter(telegram_id=message.from_user.id).first()
+    expense = Expense(**data)
+    await expense.save()
+    await Operation(operation_type='expense',
+                    operation_id=expense.id,
+                    date=datetime.datetime.today()).save()
+    await message.answer("Список Ваших расходов пополнен")
+    await state.finish()
+
+
+@dp.callback_query_handler(text='add_income')
+async def add_income(call: CallbackQuery):
+    await call.answer()
+    await AddIncomeState.sum.set()
+    await call.message.answer('Введите сумму')
+
+
+@dp.message_handler(state=AddIncomeState, regexp=is_num_regex)
+async def income_sum_entered(message: Message, state: FSMContext):
     await state.update_data(sum=float(message.text) * 100)
     data = await state.get_data()
     await save_income(data, message, state)
 
 
 async def save_income(data, message, state):
-    data['category'] = await Category.filter(id=int(data['category'])).first()
     data['date'] = datetime.datetime.today()
     data['user'] = await User.filter(telegram_id=message.from_user.id).first()
-    await Expense(**data).save()
-    await message.answer("Список Ваших расходов пополнен")
+    income = Income(**data)
+    await income.save()
+    await Operation(operation_type='income',
+                    operation_id=income.id,
+                    date=datetime.datetime.today()).save()
+    await message.answer("Список Ваших доходов пополнен")
     await state.finish()
