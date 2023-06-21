@@ -10,6 +10,7 @@ class User(models.Model):
     id = fields.BigIntField(pk=True, null=False, unique=True, index=True)
     telegram_id = fields.BigIntField(null=False, unique=True)
     incomes: fields.ReverseRelation['Income']
+    expenses: fields.ReverseRelation['Expense']
 
     class Meta:
         table = 'users'
@@ -20,13 +21,15 @@ class Category(models.Model):
     name = fields.TextField(null=False)
     incomes: fields.ReverseRelation['Income']
 
+    class Meta:
+        table = 'categories'
+
 
 class Income(models.Model):
     id = fields.BigIntField(pk=True, null=False, unique=True, index=True)
     sum = fields.BigIntField(null=False)
-    user = fields.ForeignKeyField('models.User', related_name='incomes')
-    category = fields.ForeignKeyField('models.Category', related_name='incomes')
     date = fields.DateField(null=False)
+    user = fields.ForeignKeyField('models.User', related_name='incomes')
 
     class Meta:
         table = 'incomes'
@@ -36,6 +39,8 @@ class Expense(models.Model):
     id = fields.BigIntField(pk=True, null=False, unique=True, index=True)
     sum = fields.BigIntField(null=False)
     date = fields.DateField(null=False)
+    user = fields.ForeignKeyField('models.User', related_name='expenses')
+    category = fields.ForeignKeyField('models.Category', related_name='incomes')
 
     class Meta:
         table = 'expenses'

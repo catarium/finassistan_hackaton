@@ -27,3 +27,4 @@ def setup():
     import bot.handlers.home
     import bot.handlers.finances
     import bot.handlers.calculator
+    import bot.handlers.admin

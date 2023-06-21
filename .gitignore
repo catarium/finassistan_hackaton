@@ -85,7 +85,7 @@ fabric.properties
 
 *.iml
 modules.xml
-.idea/misc.xml
+../.idea/misc.xml
 *.ipr
 
 ### Python ###
@@ -211,7 +211,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+../.env
 .venv
 env/
 venv/

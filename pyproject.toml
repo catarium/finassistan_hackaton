@@ -1,0 +1,4 @@
+[tool.aerich]
+tortoise_orm = "bot.core.db_config.DATABASE_CONFIG"
+location = "./bot/db/migrations"
+src_folder = "./..\\..\\projects\\finassistan_hackaton"
