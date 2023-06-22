@@ -1,7 +1,9 @@
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from tortoise import Tortoise
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from bot.core.config import config
+from bot.services.auto_news import Notifier
 
 storage = RedisStorage2(
     host=config.REDIS_HOST,
@@ -21,6 +23,9 @@ async def database_init():
         db_url=db_url,
         modules={'models': ['bot.db.models']}
     )
+
+
+notifier = Notifier(AsyncIOScheduler(), bot)
 
 
 def setup():
