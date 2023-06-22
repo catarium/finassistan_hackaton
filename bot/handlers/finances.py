@@ -25,10 +25,14 @@ async def finances_menu(call: CallbackQuery):
     operations = [await Expense.filter(id=operation.operation_id).first() if operation.operation_type == 'expense'
                   else await Income.filter(id=operation.operation_id).first()
                   for operation in operations]
-    operations = '\n'.join([f'{i + 1} +{operations[i].sum / 100} {operations[i].date.strftime("%d-%m-%Y")}'
-                  if isinstance(operations[i], Income) else
-                  f'{i + 1} -{operations[i].sum / 100} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
-                  for i in range(len(operations))])
+    operationss = []
+    for i in range(len(operations)):
+        if isinstance(operations[i], Income):
+            operationss.append(f'{i + 1} +{operations[i].sum / 100} {operations[i].date.strftime("%d-%m-%Y")}')
+        elif isinstance(operations[i], Expense):
+            operationss.append(f'{i + 1} -{operations[i].sum / 100} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}')
+
+    operations = '\n'.join(operationss)
     msg = f'''
 Ваши операции:
 {operations}
@@ -53,10 +57,14 @@ async def change_page(call: CallbackQuery, callback_data: dict):
                   for operation in operations]
     for o in operations:
         print(type(o))
-    operations = '\n'.join([f'{5 * (callback_data["page"] - 1) + i + 1} +{operations[i].sum / 100} {operations[i].date.strftime("%d-%m-%Y")}'
-                            if isinstance(operations[i], Income) else
-                            f'{5 * (callback_data["page"] - 1) + i + 1} -{operations[i].sum / 100} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
-                            for i in range(len(operations))])
+
+    operationss = []
+    for i in range(len(operations)):
+        if isinstance(operations[i], Income):
+            operationss.append(f'{5 * (callback_data["page"] - 1) + i + 1} -{operations[i].sum / 100} {operations[i].date.strftime("%d-%m-%Y")}')
+        elif isinstance(operations[i], Expense):
+            operationss.append(f'{5 * (callback_data["page"] - 1) + i + 1} -{operations[i].sum / 100} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}')
+    operations = '\n'.join(operationss)
     if not operations:
         return
     msg = f'''
