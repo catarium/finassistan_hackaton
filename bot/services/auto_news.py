@@ -13,7 +13,7 @@ class Notifier:
         self.scheduler.start()
 
     async def enable(self):
-        job = self.scheduler.add_job(daily_advice, 'cron', args=(self.bot,), second=0)
+        job = self.scheduler.add_job(daily_advice, 'cron', args=(self.bot,), hour=12)
         if self.job_id:
             await self.disable()
         self.job_id = job.id
