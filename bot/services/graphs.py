@@ -50,7 +50,6 @@ def year_graph_bars(value_up: list, value_down: list):
     plt.title('Расходы')
     plt.xlabel('Месяцы')
     plt.ylabel('Траты')
-    plt.show()
     path = f'bot/services/figures/{time.time()}.png'
     plt.savefig(path)
     return path
