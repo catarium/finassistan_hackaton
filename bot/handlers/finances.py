@@ -1,17 +1,20 @@
 import datetime
 
 from aiogram.dispatcher import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, InputFile
 from tortoise.expressions import Q
 
 from bot.core.constants import is_num_regex
 from bot.db.models import Expense, User, Income, Category, Operation
+from bot.db import utils
 from bot.handlers.keyboards.finances_menu_keyboard import \
     finances_menu_keyboard, f_cb
 from bot.handlers.keyboards.categories_keyboard import categories_keyboard, cb
+from bot.handlers.keyboards.graph_keyboard import graph_keyboard
 from bot.handlers.states.add_expense import AddExpenseState
 from bot.handlers.states.add_income import AddIncomeState
-from bot.misc import dp
+from bot.misc import dp, bot
+from bot.services import graphs
 
 
 @dp.callback_query_handler(text='finances_menu', state='*')
@@ -22,9 +25,9 @@ async def finances_menu(call: CallbackQuery):
     operations = [await Expense.filter(id=operation.operation_id).first() if operation.operation_type == 'expense'
                   else await Income.filter(id=operation.operation_id).first()
                   for operation in operations]
-    operations = '\n'.join([f'{i + 1} +{operations[i].sum} {operations[i].date.strftime("%d-%m-%Y")}'
+    operations = '\n'.join([f'{i + 1} +{operations[i].sum / 100} {operations[i].date.strftime("%d-%m-%Y")}'
                   if isinstance(operations[i], Income) else
-                  f'{i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
+                  f'{i + 1} -{operations[i].sum / 100} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
                   for i in range(len(operations))])
     msg = f'''
 Ваши операции:
@@ -50,9 +53,9 @@ async def change_page(call: CallbackQuery, callback_data: dict):
                   for operation in operations]
     for o in operations:
         print(type(o))
-    operations = '\n'.join([f'{5 * (callback_data["page"] - 1) + i + 1} +{operations[i].sum} {operations[i].date.strftime("%d-%m-%Y")}'
+    operations = '\n'.join([f'{5 * (callback_data["page"] - 1) + i + 1} +{operations[i].sum / 100} {operations[i].date.strftime("%d-%m-%Y")}'
                             if isinstance(operations[i], Income) else
-                            f'{5 * (callback_data["page"] - 1) + i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
+                            f'{5 * (callback_data["page"] - 1) + i + 1} -{operations[i].sum / 100} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
                             for i in range(len(operations))])
     if not operations:
         return
@@ -128,3 +131,28 @@ async def save_income(data, message, state):
                     user=data['user']).save()
     await message.answer("Список Ваших доходов пополнен")
     await state.finish()
+
+
+@dp.callback_query_handler(text='export_data')
+async def export_data(call: CallbackQuery):
+    await call.answer()
+    await call.message.answer('Выберите график', reply_markup=await graph_keyboard())
+
+
+@dp.callback_query_handler(text='year_graph')
+async def year_graph(call: CallbackQuery):
+    await call.answer()
+    year = datetime.datetime.now().year
+    user = await User.filter(telegram_id=call.message.chat.id).first()
+    path = graphs.year_graph_line(await utils.data_months(year, user))
+    await bot.send_photo(user.telegram_id, InputFile(path))
+
+
+@dp.callback_query_handler(text='cat_month_graph')
+async def cat_month_graph(call: CallbackQuery):
+    month = datetime.datetime.now().month
+    user = await User.filter(telegram_id=call.message.chat.id).first()
+    data = await utils.data_days_categories(month, user)
+    path = graphs.mounth_graph_bars(data.keys(), data.values())
+    await bot.send_photo(user.telegram_id, InputFile(path))
+
