@@ -1,6 +1,7 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import time
+import random
 
 
 MONTHS = ['Янв', 'Фев', 'Март', 'Апр', 'Май', 'Июнь', 'Июль',
@@ -30,7 +31,6 @@ def year_graph_line(values_up: list, values_down: list):
 
 
 def year_graph_bar(values: list):
-    num = np.arange(1, 13)
     plt.bar(MONTHS, values, edgecolor='black')
     plt.title('Расходы')
     plt.xlabel('Месяца')
@@ -43,11 +43,15 @@ def year_graph_bar(values: list):
 
 
 def year_graph_bars(value_up: list, value_down: list):
-    plt.bar(MONTHS, value_up, edgecolor='black', color='blue')
-    plt.bar(MONTHS, value_down, edgecolor='black', color='orange')
+    num = np.arange(1, 13)
+    plt.bar(num + 0.2, value_up, width=0.4, edgecolor='black', color='blue')
+    plt.bar(num - 0.2, value_down, width=0.4, edgecolor='black', color='orange')
+    plt.xticks(num, MONTHS)
     plt.title('Расходы')
-    plt.xlabel('Категории')
+    plt.xlabel('Месяцы')
     plt.ylabel('Траты')
+    plt.show()
     path = f'bot/services/figures/{time.time()}.png'
     plt.savefig(path)
     return path
+
