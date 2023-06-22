@@ -16,6 +16,7 @@ from bot.misc import dp
 
 @dp.callback_query_handler(text='finances_menu', state='*')
 async def finances_menu(call: CallbackQuery):
+    await call.answer()
     user = await User.filter(telegram_id=int(call.message.chat.id)).first()
     operations = await Operation.filter(user=user).order_by('-date').limit(5).all()
     operations = [await Expense.filter(id=operation.operation_id).first() if operation.operation_type == 'expense'
@@ -44,25 +45,17 @@ async def change_page(call: CallbackQuery, callback_data: dict):
     user = await User.filter(telegram_id=int(call.message.chat.id)).first()
     operations = await Operation.filter(user=user).order_by('-date').offset\
         (5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
-    # operations = await Operation.filter(Q(operation_id__in=[el[0] for el in (await user.expenses.all().values_list('id'))]) |
-    #                                     Q(operation_id__in=[el[0] for el in (await user.incomes.all().values_list('id'))])).offset(
-    #     5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
-    operations = '\n'.join([f'{i + 1} +{operations[i].sum} {operations[i].date.strftime("%d-%m-%Y")}'
+    operations = [await Expense.filter(id=operation.operation_id).first() if operation.operation_type == 'expense'
+                  else await Income.filter(id=operation.operation_id).first()
+                  for operation in operations]
+    for o in operations:
+        print(type(o))
+    operations = '\n'.join([f'{5 * (callback_data["page"] - 1) + i + 1} +{operations[i].sum} {operations[i].date.strftime("%d-%m-%Y")}'
                             if isinstance(operations[i], Income) else
-                            f'{i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
+                            f'{5 * (callback_data["page"] - 1) + i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
                             for i in range(len(operations))])
     if not operations:
         return
-    # expenses = await user.expenses.offset(5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
-    # incomes = await user.incomes.offset(5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
-    # if not expenses and not incomes:
-    #     return
-    # operations = list(sorted(expenses + incomes, key=lambda x: x.date))
-    print(operations)
-    operations = '\n'.join([f'{5 * (callback_data["page"] - 1) + i + 1} +{operations[i].sum} {operations[i].date}'
-                            if isinstance(operations[i], Income) else
-                            f'{5 * (callback_data["page"] - 1) + i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date}'
-                            for i in range(len(operations))])
     msg = f'''
 Ваши операции:
 {operations}
