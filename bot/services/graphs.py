@@ -1,13 +1,11 @@
-import time
-
 from matplotlib import pyplot as plt
 import numpy as np
 import random
+import time
+
 
 MONTHS = ['Янв', 'Фев', 'Март', 'Апр', 'Май', 'Июнь', 'Июль',
-          'Авг', 'Сент', 'Окт', 'Нояб', 'Дек']
-
-
+           'Авг', 'Сент', 'Окт', 'Нояб', 'Дек']
 def mounth_graph_bars(categories: list, values: list):
     plt.bar(categories, values, edgecolor='black')
     plt.title('Расходы')
@@ -18,10 +16,10 @@ def mounth_graph_bars(categories: list, values: list):
     return path
 
 
-def year_graph_line(values: list):
+def year_graph_line(values_up: list, values_down: list):
     num = np.arange(1, 13)
-    plt.plot(num, values, 'r')
-    plt.scatter(num, values, color='red')
+    plt.plot(num, values_up, 'r-^')
+    plt.plot(num, values_down, 'b-o')
     plt.xlabel('Номера месяцев')
     plt.ylabel('Траты')
     plt.title('Расходы')
