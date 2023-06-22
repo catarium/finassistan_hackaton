@@ -40,3 +40,14 @@ def year_graph_bar(values: list):
     filename = f'{time.time()}.png'
     plt.savefig(f'figures/{filename}')
     return filename
+
+
+def year_graph_bars(value_up: list, value_down: list):
+    plt.bar(MONTHS, value_up, edgecolor='black', color='blue')
+    plt.bar(MONTHS, value_down, edgecolor='black', color='orange')
+    plt.title('Расходы')
+    plt.xlabel('Категории')
+    plt.ylabel('Траты')
+    path = f'bot/services/figures/{time.time()}.png'
+    plt.savefig(path)
+    return path
