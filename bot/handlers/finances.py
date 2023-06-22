@@ -16,19 +16,14 @@ from bot.misc import dp
 
 @dp.callback_query_handler(text='finances_menu', state='*')
 async def finances_menu(call: CallbackQuery):
-    await call.message.delete()
     user = await User.filter(telegram_id=int(call.message.chat.id)).first()
-    operations = await Operation.filter(Q(operation_id__in=[el[0] for el in (await user.expenses.all().values_list('id'))]) |
-                                        Q(operation_id__in=[el[0] for el in (await user.incomes.all().values_list('id'))])).limit(5).all()
+    operations = await Operation.filter(user=user).order_by('-date').limit(5).all()
     operations = [await Expense.filter(id=operation.operation_id).first() if operation.operation_type == 'expense'
                   else await Income.filter(id=operation.operation_id).first()
                   for operation in operations]
-    # expenses = await user.expenses.limit(10).all()
-    # incomes = await user.incomes.limit(10).all()
-    # operations = list(sorted(expenses + incomes, key=lambda x: x.date))
-    operations = '\n'.join([f'{i + 1} +{operations[i].sum} {operations[i].date}'
+    operations = '\n'.join([f'{i + 1} +{operations[i].sum} {operations[i].date.strftime("%d-%m-%Y")}'
                   if isinstance(operations[i], Income) else
-                  f'{i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date}'
+                  f'{i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
                   for i in range(len(operations))])
     msg = f'''
 Ваши операции:
@@ -42,16 +37,20 @@ async def finances_menu(call: CallbackQuery):
 async def change_page(call: CallbackQuery, callback_data: dict):
     print('hi')
     print(callback_data['page'])
+    await call.answer()
     callback_data['page'] = int(callback_data['page'])
     if callback_data['page'] < 1:
         return
     user = await User.filter(telegram_id=int(call.message.chat.id)).first()
-    operations = await Operation.filter(Q(operation_id__in=[el[0] for el in (await user.expenses.all().values_list('id'))]) |
-                                        Q(operation_id__in=[el[0] for el in (await user.incomes.all().values_list('id'))])).offset(
-        5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
-    operations = [await Expense.filter(id=operation.operation_id).first() if operation.operation_type == 'expense'
-                  else await Income.filter(id=operation.operation_id).first()
-                  for operation in operations]
+    operations = await Operation.filter(user=user).order_by('-date').offset\
+        (5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
+    # operations = await Operation.filter(Q(operation_id__in=[el[0] for el in (await user.expenses.all().values_list('id'))]) |
+    #                                     Q(operation_id__in=[el[0] for el in (await user.incomes.all().values_list('id'))])).offset(
+    #     5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
+    operations = '\n'.join([f'{i + 1} +{operations[i].sum} {operations[i].date.strftime("%d-%m-%Y")}'
+                            if isinstance(operations[i], Income) else
+                            f'{i + 1} -{operations[i].sum} {(await operations[i].category).name} {operations[i].date.strftime("%d-%m-%Y")}'
+                            for i in range(len(operations))])
     if not operations:
         return
     # expenses = await user.expenses.offset(5 * (callback_data['page'] - 1)).limit(5 * callback_data['page']).all()
@@ -84,6 +83,7 @@ async def add_expense(call: CallbackQuery):
 
 @dp.callback_query_handler(cb.filter(), state=AddExpenseState.category)
 async def category_chosen(call: CallbackQuery, callback_data: dict, state: FSMContext):
+    await call.answer()
     await state.update_data(category=callback_data['el_id'])
     await AddExpenseState.next()
     await call.message.answer('Введите сумму')
@@ -98,13 +98,14 @@ async def expense_sum_entered(message: Message, state: FSMContext):
 
 async def save_expense(data, message, state):
     data['category'] = await Category.filter(id=int(data['category'])).first()
-    data['date'] = datetime.datetime.today()
+    data['date'] = datetime.datetime.now()
     data['user'] = await User.filter(telegram_id=message.from_user.id).first()
     expense = Expense(**data)
     await expense.save()
     await Operation(operation_type='expense',
                     operation_id=expense.id,
-                    date=datetime.datetime.today()).save()
+                    date=data['date'],
+                    user=data['user']).save()
     await message.answer("Список Ваших расходов пополнен")
     await state.finish()
 
@@ -124,12 +125,13 @@ async def income_sum_entered(message: Message, state: FSMContext):
 
 
 async def save_income(data, message, state):
-    data['date'] = datetime.datetime.today()
+    data['date'] = datetime.datetime.now()
     data['user'] = await User.filter(telegram_id=message.from_user.id).first()
     income = Income(**data)
     await income.save()
     await Operation(operation_type='income',
                     operation_id=income.id,
-                    date=datetime.datetime.today()).save()
+                    date=data['date'],
+                    user=data['user']).save()
     await message.answer("Список Ваших доходов пополнен")
     await state.finish()

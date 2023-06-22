@@ -28,7 +28,7 @@ class Category(models.Model):
 class Income(models.Model):
     id = fields.BigIntField(pk=True, null=False, unique=True, index=True)
     sum = fields.BigIntField(null=False)
-    date = fields.DateField(null=False)
+    date = fields.DatetimeField(null=False)
     user = fields.ForeignKeyField('models.User', related_name='incomes')
 
     class Meta:
@@ -38,7 +38,7 @@ class Income(models.Model):
 class Expense(models.Model):
     id = fields.BigIntField(pk=True, null=False, unique=True, index=True)
     sum = fields.BigIntField(null=False)
-    date = fields.DateField(null=False)
+    date = fields.DatetimeField(null=False)
     user = fields.ForeignKeyField('models.User', related_name='expenses')
     category = fields.ForeignKeyField('models.Category', related_name='incomes')
 
@@ -50,7 +50,7 @@ class Operation(models.Model):
     id = fields.BigIntField(pk=True, null=False, unique=True, index=True)
     operation_type = fields.TextField(null=False)
     operation_id = fields.BigIntField(null=False)
-    date = fields.DateField(null=False)
+    date = fields.DatetimeField(null=False)
     user = fields.ForeignKeyField('models.User', related_name='operations')
 
     class Meta:
