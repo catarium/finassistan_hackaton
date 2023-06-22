@@ -55,3 +55,8 @@ class Operation(models.Model):
 
     class Meta:
         table = 'operations'
+
+
+class Advice(models.Model):
+    id = fields.BigIntField(pk=True, null=False, unique=True, index=True)
+    content = fields.TextField(null=False)

@@ -139,12 +139,12 @@ async def export_data(call: CallbackQuery):
     await call.message.answer('Выберите график', reply_markup=await graph_keyboard())
 
 
-@dp.callback_query_handler(text='year_graph')
+@dp.callback_query_handler(text='year_graph_line')
 async def year_graph(call: CallbackQuery):
     await call.answer()
     year = datetime.datetime.now().year
     user = await User.filter(telegram_id=call.message.chat.id).first()
-    path = graphs.year_graph_line(await utils.data_months(year, user))
+    path = graphs.year_graph_line(*(await utils.data_months(year, user)))
     await bot.send_photo(user.telegram_id, InputFile(path))
 
 
@@ -154,5 +154,14 @@ async def cat_month_graph(call: CallbackQuery):
     user = await User.filter(telegram_id=call.message.chat.id).first()
     data = await utils.data_days_categories(month, user)
     path = graphs.mounth_graph_bars(data.keys(), data.values())
+    await bot.send_photo(user.telegram_id, InputFile(path))
+
+
+@dp.callback_query_handler(text='year_graph_bar')
+async def year_graph(call: CallbackQuery):
+    await call.answer()
+    year = datetime.datetime.now().year
+    user = await User.filter(telegram_id=call.message.chat.id).first()
+    path = graphs.year_graph_bars(*(await utils.data_months(year, user)))
     await bot.send_photo(user.telegram_id, InputFile(path))
 
