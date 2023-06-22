@@ -1,6 +1,5 @@
 from matplotlib import pyplot as plt
 import numpy as np
-import random
 import time
 
 
@@ -24,7 +23,7 @@ def year_graph_line(values_up: list, values_down: list):
     plt.ylabel('Траты')
     plt.title('Расходы')
     plt.xticks(num)
-
+    plt.legend(['Доходы', 'Расходы'])
     path = f'bot/services/figures/{time.time()}.png'
     plt.savefig(path)
     return path
